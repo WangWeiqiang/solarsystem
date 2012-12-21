@@ -6,62 +6,198 @@
         <script src="js/three.min.js"></script>
         <script src="js/TrackballControls.js"></script>
         <style type="text/css">
-            div#canvas-frame{
-              border: none;
-              cursor: pointer;
-              width: 600px;
-              height: 600px;
-              background-color: #EEEEEE;
+            body{
+                padding: 0;margin: 0;
             }
+
         </style>
+        <script id="fragmentShader" type="x-shader/x-fragment">
+            #ifdef GL_ES
+            precision highp float;
+            #endif
+			uniform float time;
+			varying vec3 vTexCoord3D;
+			varying vec3 vNormal;
+			varying vec3 vViewPosition;
+			vec4 permute(vec4 x){
+				return mod(((x*34.0)+1.0)*x,289.0);
+			}
+
+			vec4 taylorInvSqrt(vec4 r){
+				return 1.79284291400159 - 0.85373472095314 * r;
+			}
+
+			float snoise(vec3 v) {
+				const vec2 C = vec2( 1.0 / 6.0, 1.0 / 3.0 );
+				const vec4 D = vec4( 0.0, 0.5, 1.0, 2.0 );
+				// First corner
+				vec3 i  = floor( v + dot( v, C.yyy ) );
+				vec3 x0 = v - i + dot( i, C.xxx );
+				// Other corners
+				vec3 g = step( x0.yzx, x0.xyz );
+				vec3 l = 1.0 - g;
+				vec3 i1 = min( g.xyz, l.zxy );
+				vec3 i2 = max( g.xyz, l.zxy );
+				//  x0 = x0 - 0. + 0.0 * C
+				vec3 x1 = x0 - i1 + 1.0 * C.xxx;
+				vec3 x2 = x0 - i2 + 2.0 * C.xxx;
+				vec3 x3 = x0 - 1. + 3.0 * C.xxx;
+				// Permutations
+				i = mod( i, 289.0 );
+				vec4 p = permute( permute( permute(
+						 i.z + vec4( 0.0, i1.z, i2.z, 1.0 ) )
+					   + i.y + vec4( 0.0, i1.y, i2.y, 1.0 ) )
+					   + i.x + vec4( 0.0, i1.x, i2.x, 1.0 ) );
+
+				// Gradients
+				// ( N*N points uniformly over a square, mapped onto an octahedron.)
+
+				float n_ = 1.0 / 7.0; // N=7
+				vec3 ns = n_ * D.wyz - D.xzx;
+				vec4 j = p - 49.0 * floor( p * ns.z *ns.z );  //  mod(p,N*N)
+				vec4 x_ = floor( j * ns.z );
+				vec4 y_ = floor( j - 7.0 * x_ );    // mod(j,N)
+				vec4 x = x_ *ns.x + ns.yyyy;
+				vec4 y = y_ *ns.x + ns.yyyy;
+				vec4 h = 1.0 - abs( x ) - abs( y );
+				vec4 b0 = vec4( x.xy, y.xy );
+				vec4 b1 = vec4( x.zw, y.zw );
+				vec4 s0 = floor( b0 ) * 2.0 + 1.0;
+				vec4 s1 = floor( b1 ) * 2.0 + 1.0;
+				vec4 sh = -step( h, vec4( 0.0 ) );
+				vec4 a0 = b0.xzyw + s0.xzyw * sh.xxyy;
+				vec4 a1 = b1.xzyw + s1.xzyw * sh.zzww;
+				vec3 p0 = vec3( a0.xy, h.x );
+				vec3 p1 = vec3( a0.zw, h.y );
+				vec3 p2 = vec3( a1.xy, h.z );
+				vec3 p3 = vec3( a1.zw, h.w );
+
+				// Normalise gradients
+				vec4 norm = taylorInvSqrt( vec4( dot(p0,p0), dot(p1,p1), dot(p2, p2), dot(p3,p3) ) );
+				p0 *= norm.x;
+				p1 *= norm.y;
+				p2 *= norm.z;
+				p3 *= norm.w;
+
+				// Mix final noise value
+				vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3) ), 0.0 );
+				m = m * m;
+				return 32.0 * dot( m*m, vec4( dot(p0,x0), dot(p1,x1),dot(p2,x2), dot(p3,x3) ) );
+			}
+
+			float heightMap(vec3 coord){
+				float n = abs(snoise(coord));
+				n += 0.95   * abs(snoise(coord * 4.0));
+				n += 0.25   * abs(snoise(coord * 8.0));
+				n += 0.125  * abs(snoise(coord * 16.0));
+				n += 0.0625 * abs(snoise(coord * 32.0));
+				return n;
+			}
+
+			void main( void ) {
+                // height
+				float n = heightMap(vTexCoord3D);
+				// color
+				gl_FragColor = vec4(vec3( 9.5 - n, 1.0 - n, 0.5 - n ),1.0);
+				// normal
+				const float e = 0.01;
+				float nx = heightMap(vTexCoord3D + vec3( e, 0.0, 0.0 ));
+				float ny = heightMap(vTexCoord3D + vec3( 0.0, e, 0.0 ));
+				float nz = heightMap(vTexCoord3D + vec3( 0.0, 0.0, e ));
+				vec3 normal = normalize( vNormal + 0.15 * vec3( n - nx, n - ny, n - nz ) / e );
+				// diffuse light
+				vec3 vLightWeighting = vec3( 0.9 );
+				vec4 lDirection = viewMatrix * vec4( normalize( vec3( 1.0, 0.0, 0.5 ) ), 0.0 );
+				float directionalLightWeighting = dot( normal, normalize( lDirection.xyz ) ) * 0.55 + 0.75;
+				vLightWeighting += vec3(5.0 ) * directionalLightWeighting;
+				// specular light
+				vec3 dirHalfVector = normalize( lDirection.xyz + normalize( vViewPosition ) );
+				float dirDotNormalHalf = dot( normal, dirHalfVector );
+				float dirSpecularWeight = 0.0;
+				if ( dirDotNormalHalf >= 0.0 )
+					dirSpecularWeight = ( 1.0 - n ) * pow( dirDotNormalHalf, 5.0 );
+
+				vLightWeighting += vec3( 1.0, 0.5, 0.0 ) * dirSpecularWeight * n * 9.0;
+				gl_FragColor *= vec4( vLightWeighting, 1.0 );
+			}
+
+		</script>
+
+		<script id="vertexShader" type="x-shader/x-vertex">
+      uniform float time;
+      uniform float scale;
+      uniform mat4 objectMatrix;
+      varying vec3 vTexCoord3D;
+      varying vec3 vNormal;
+      varying vec3 vViewPosition;
+
+      void main(void )
+      {
+
+          vec4 mPosition = objectMatrix * vec4(position, 100.0);
+          vNormal = normalize(normalMatrix * normal);
+          vViewPosition = cameraPosition - mPosition.xyz;
+
+          vTexCoord3D = scale * (position.xyz + vec3(0.0, 0.0, -time));
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+
+      }
+
+		</script>
+
         <script>
             var container, stats;
             var camera, scene, renderer;
             var group;
-            var mouseX = 0, mouseY = 0;
-            var directionalLight;
+
+
             var windowHalfX = window.innerWidth / 2;
             var windowHalfY = window.innerHeight / 2;
+            var oldTime = new Date().getTime(); var sununiforms;
+            var radius = 10;
+            var sun_radius = 1 * radius;
+            var mercury_radius = 0.382 * radius;
+            var venus_radius = 0.94 * radius;
+            var mars_radius = 0.6 * radius;
+            var jupiter_radius = 11 * radius;
+            var saturm_radius = 9.4 * radius;
+            var uranus_radius = 3.98 * radius;
+            var neptune_radius = 3.85 * radius;
 
-            var radius = 6371;
             var tilt = 0.41;
             var rotationSpeed = 0.02;
 
             var cloudsScale = 1.005;
             var moonScale = 0.13;
-
+            var sunScale = 2;
             var MARGIN = 0;
             var SCREEN_HEIGHT = window.innerHeight - MARGIN * 2;
             var SCREEN_WIDTH = window.innerWidth;
 
-            var container, stats;
-            var camera, controls, scene, sceneCube, renderer;
+            var controls, sceneCube;
             var geometry, meshPlanet, meshClouds, meshMoon, meshSun;
             var dirLight, pointLight, ambientLight;
 
             var d, dPlanet, dMoon, dMoonVec = new THREE.Vector3();
             var clock = new THREE.Clock();
             var camGroup;
-            var controls;
             var projector;
             var objects = [];
-            var moonPivot;
+            var earthPivot, moonPivot;
             function init() {
                 scene = new THREE.Scene();
                 container = document.getElementById("box");
                 camera = new THREE.PerspectiveCamera(25, SCREEN_WIDTH / SCREEN_HEIGHT, 50, 1e7);
-                camera.position.z = radius * 10;
+                camera.position.z = radius * 20;
+                camera.position.x = radius / 2;
 
                 controls = new THREE.TrackballControls(camera);
                 controls.addEventListener('change', render);
-                //scene.fog = new THREE.FogExp2(0x000000, 0.0000015);
 
-                dirLight = new THREE.DirectionalLight(0xffffff);
-                dirLight.position.set(1, 0, 0).normalize();
-                scene.add(dirLight);
 
-                ambientLight = new THREE.AmbientLight(0x000000);
-                scene.add(ambientLight);
+                pointLight = new THREE.PointLight(0xffffff);
+                pointLight.position.set(0, 0, 0);
+                scene.add(pointLight);
 
                 var planetTexture = THREE.ImageUtils.loadTexture("images/earth_atmos_2048.jpg");
                 var cloudsTexture = THREE.ImageUtils.loadTexture("images/earth_clouds_1024.png");
@@ -69,7 +205,7 @@
                 var specularTexture = THREE.ImageUtils.loadTexture("images/earth_specular_2048.jpg");
 
                 var moonTexture = THREE.ImageUtils.loadTexture("images/moon_1024.jpg");
-                var sunTexture = THREE.ImageUtils.loadTexture("images/sun.png");
+
                 var shader = THREE.ShaderUtils.lib["normal"];
                 var uniforms = THREE.UniformsUtils.clone(shader.uniforms);
 
@@ -98,42 +234,97 @@
                 };
 
                 var materialNormalMap = new THREE.ShaderMaterial(parameters);
-
-                // planet
-                geometry = new THREE.SphereGeometry(radius, 100, 50);
+                geometry = new THREE.SphereGeometry(radius, 50, 50);
                 geometry.computeTangents();
+
+                var resolution = radius * 10;
+                var amplitude = radius * 10;
+                var size = 360 / resolution;
+
+                var linegeometry = new THREE.Geometry();
+                var material = new THREE.LineBasicMaterial({ color: 0xFFFFFF, opacity: 1.0 });
+                for(var i = 0; i <= resolution; i++) {
+                    var segment = (i * size) * Math.PI / 180;
+                    linegeometry.vertices.push(new THREE.Vector3(Math.cos(segment) * amplitude, 0, Math.sin(segment) * amplitude));
+                }
+
+                var line = new THREE.Line(linegeometry, material);
+                scene.add(line);
+                // earth
                 meshPlanet = new THREE.Mesh(geometry, materialNormalMap);
                 meshPlanet.rotation.y = 0;
                 meshPlanet.rotation.z = tilt;
+                meshPlanet.position.set(0, 0, 10 * radius);
                 scene.add(meshPlanet);
                 objects.push(meshPlanet);
-                // clouds
+                // clouds on the earth
                 var materialClouds = new THREE.MeshLambertMaterial({ color: 0xffffff, map: cloudsTexture, transparent: true });
                 meshClouds = new THREE.Mesh(geometry, materialClouds);
                 meshClouds.scale.set(cloudsScale, cloudsScale, cloudsScale);
                 meshClouds.rotation.z = tilt;
+                meshClouds.position.set(0, 0, 10 * radius);
                 scene.add(meshClouds);
                 objects.push(meshClouds);
+                earthPivot = new THREE.Object3D();
 
                 moonPivot = new THREE.Object3D();
                 meshPlanet.add(moonPivot);
+                //sun
+                sununiforms = {
+                    time: { type: "f", value: 1.0 },
+                    scale: { type: "f", value: 100 }
+                };
+                var sunmaterial = new THREE.ShaderMaterial({
+                    uniforms: sununiforms,
+                    vertexShader: document.getElementById('vertexShader').innerHTML,
+                    fragmentShader: document.getElementById('fragmentShader').innerHTML,
+                    transparent: true
+                });
+                //sunmaterial=new THREE.MeshPhongMaterial({ color: 0xffffff, map: THREE.ImageUtils.loadTexture("images/sun.jpg") });
+                meshSun = new THREE.Mesh(new THREE.SphereGeometry(sun_radius, 50, 50),sunmaterial);
+                //meshSun.scale.set(100, 100, 100);
+                scene.add(meshSun);
+                objects.push(meshSun);
 
-
+                meshSun.add(earthPivot);
+                earthPivot.add(meshPlanet);
+                earthPivot.add(meshClouds);
                 // moon
                 var materialMoon = new THREE.MeshPhongMaterial({ color: 0xffffff, map: moonTexture });
                 meshMoon = new THREE.Mesh(geometry, materialMoon);
-                meshMoon.position.set(0, 0, radius *10);
+                meshMoon.position.set(0, 0, radius * 3);
                 meshMoon.scale.set(moonScale, moonScale, moonScale);
                 scene.add(meshMoon);
                 objects.push(meshMoon);
                 moonPivot.add(meshMoon);
 
-                // sun
-                var mterialSun = new THREE.MeshPhongMaterial({ color: 0xffffff, map: sunTexture });
-                meshSun = new THREE.Mesh(geometry, mterialSun);
-                meshSun.position.set(radius * 10, 0, 0);
-                meshSun.scale.set(moonScale, moonScale, moonScale);
-                //scene.add(meshSun);
+                //Mercury
+                var meterialMercury = new THREE.MeshPhongMaterial({ color: 0xffffff, map: THREE.ImageUtils.loadTexture("images/shuixing.jpg") });
+                var meshMercury = new THREE.Mesh(geometry, meterialMercury);
+                meshMercury.scale.set(0.3, 0.3, 0.3);
+                meshMercury.position.set(radius, 0, radius * 1.5);
+                scene.add(meshMercury);
+
+                //Venus
+                var meterialVenus = new THREE.MeshPhongMaterial({ color: 0xffffff, map: THREE.ImageUtils.loadTexture("images/jinxing.jpg") });
+                var meshVenus = new THREE.Mesh(geometry, meterialVenus);
+                meshVenus.scale.set(0.8, 0.8, 0.8);
+                meshVenus.position.set(radius * 1.5, 0, radius * 2.5);
+                scene.add(meshVenus);
+
+                //Mars
+                var meterialMars = new THREE.MeshPhongMaterial({ color: 0xffffff, map: THREE.ImageUtils.loadTexture("images/huoxing.jpg") });
+                var meshMars = new THREE.Mesh(geometry, meterialMars);
+                meshMars.scale.set(0.5, 0.5, 0.5);
+                meshMars.position.set(-radius * 18, 0, 0);
+                scene.add(meshMars);
+
+                //Jupiter
+                var meterialJupiter = new THREE.MeshPhongMaterial({ color: 0xffffff, map: THREE.ImageUtils.loadTexture("images/muxing.jpg") });
+                var meshJupiter = new THREE.Mesh(geometry, meterialJupiter);
+                meshJupiter.scale.set(10, 10, 10);
+                meshJupiter.position.set(-radius * 50, 0, 0);
+                scene.add(meshJupiter);
                 // stars
                 var i, r = radius * 10, starsGeometry = [new THREE.Geometry(), new THREE.Geometry()];
                 for(i = 0; i < 250; i++) {
@@ -156,27 +347,22 @@
 
                 var stars;
                 var starsMaterials = [new THREE.ParticleBasicMaterial({ color: 0x555555, size: 2, sizeAttenuation: false }),
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      new THREE.ParticleBasicMaterial({ color: 0x555555, size: 1, sizeAttenuation: false }),
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      new THREE.ParticleBasicMaterial({ color: 0x333333, size: 2, sizeAttenuation: false }),
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      new THREE.ParticleBasicMaterial({ color: 0x3a3a3a, size: 1, sizeAttenuation: false }),
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      new THREE.ParticleBasicMaterial({ color: 0x1a1a1a, size: 2, sizeAttenuation: false }),
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      new THREE.ParticleBasicMaterial({ color: 0x1a1a1a, size: 1, sizeAttenuation: false })
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     ];
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        new THREE.ParticleBasicMaterial({ color: 0x555555, size: 1, sizeAttenuation: false }),
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        new THREE.ParticleBasicMaterial({ color: 0x333333, size: 2, sizeAttenuation: false }),
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        new THREE.ParticleBasicMaterial({ color: 0x3a3a3a, size: 1, sizeAttenuation: false }),
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        new THREE.ParticleBasicMaterial({ color: 0x1a1a1a, size: 2, sizeAttenuation: false }),
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        new THREE.ParticleBasicMaterial({ color: 0x1a1a1a, size: 1, sizeAttenuation: false })
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      ];
 
                 for(i = 10; i < 30; i++) {
-
                     stars = new THREE.ParticleSystem(starsGeometry[i % 2], starsMaterials[i % 6]);
-
                     stars.rotation.x = Math.random() * 6;
                     stars.rotation.y = Math.random() * 6;
                     stars.rotation.z = Math.random() * 6;
-
                     s = i * 10;
                     stars.scale.set(s, s, s);
-
                     stars.matrixAutoUpdate = false;
                     stars.updateMatrix();
-
                     scene.add(stars);
 
                 }
@@ -188,9 +374,6 @@
                 container.appendChild(renderer.domElement);
                 projector = new THREE.Projector();
                 window.addEventListener('resize', onWindowResize, false);
-                window.addEventListener('mousemove', onDocumentMouseMove, false);
-                window.addEventListener('mousedown', onDocumentMouseDown, false);
-                window.addEventListener('mouseup', onDocumentMouseUp, false);
                 window.addEventListener('dblclick', onDbClick, false);
             }
 
@@ -201,36 +384,7 @@
                 camera.updateProjectionMatrix();
                 renderer.setSize(window.innerWidth, window.innerHeight);
             }
-            var startDrogPos = new Object(), MouseDown = false;
-            startDrogPos.x = 0;
-            startDrogPos.y = 0;
 
-            var movex = 0, movey = 0;
-            function onDocumentMouseMove(event) {
-                if(MouseDown) {
-                    mouseX = (event.clientX - windowHalfX);
-                    mouseY = (event.clientY - windowHalfY);
-                    mouseXPercent = Math.ceil((mouseX / windowHalfX) * 100);
-                    mouseYPercent = Math.ceil((mouseY / windowHalfY) * 100);
-                    movex += mouseX;
-                    movey += mouseY;
-                    camera.position.x += Math.sin(movex / radius) * 10;
-                    camera.position.y += Math.sin(movey / radius) * 10;
-                    console.log(camera.position.x);
-                    render();
-                }
-
-            }
-            function onDocumentMouseDown(event) {
-                startDrogPos.x = event.clientX - windowHalfX;
-                startDrogPos.y = event.clientY - windowHalfY;
-                MouseDown = true;
-            }
-            function onDocumentMouseUp(event) {
-                MouseDown = false;
-                startDrogPos.x = 0;
-                startDrogPos.y = 0;
-            }
 
             function animate() {
                 requestAnimationFrame(animate);
@@ -245,6 +399,7 @@
                 meshPlanet.rotation.y += rotationSpeed * delta;
                 meshClouds.rotation.y += 1.25 * rotationSpeed * delta;
                 moonPivot.rotation.y += 0.1 * rotationSpeed * delta;
+                earthPivot.rotation.y += rotationSpeed * delta;
                 // slow down as we approach the surface
                 dPlanet = camera.position.length();
                 dMoonVec.sub(camera.position, meshMoon.position);
@@ -255,6 +410,12 @@
                 } else {
                     d = (dPlanet - radius * 1.01);
                 }
+
+                var time = new Date().getTime();
+                var delta = 0.001 * (time - oldTime);
+                oldTime = time;
+
+                sununiforms.time.value += 0.275 * delta;
 
 
                 renderer.clear();
