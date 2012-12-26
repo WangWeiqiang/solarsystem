@@ -336,6 +336,36 @@
             meshJupiter.scale.set(10, 10, 10);
             meshJupiter.position.set(-radius * 50, 0, 0);
             scene.add(meshJupiter);
+
+            //saturm
+            var saturmTrackLine = DrawTrackLine(0xff0000, radius * 70, 0);
+            scene.add(saturmTrackLine);
+            var meterialSaturm = new THREE.MeshPhongMaterial({ color: 0xffffff, map: THREE.ImageUtils.loadTexture("images/tuxing.jpg") });
+            meshSaturm = new THREE.Mesh(geometry, meterialSaturm);
+            meshSaturm.scale.set(9, 9, 9);
+            meshSaturm.position.set(-radius * 70,  0,-radius * 10);
+            scene.add(meshSaturm);
+
+            //Uranus
+            var uranusTrackLine = DrawTrackLine(0xff0000, radius * 90, 0);
+            scene.add(uranusTrackLine);
+            var meterialUranus = new THREE.MeshPhongMaterial({ color: 0xffffff, map: THREE.ImageUtils.loadTexture("images/tianwangxing.jpg") });
+            meshUranus = new THREE.Mesh(geometry, meterialUranus);
+            meshUranus.scale.set(3.98, 3.98, 3.98);
+            meshUranus.position.set(-radius *90, 0, -radius * 10);
+            scene.add(meshUranus);
+
+            //neptune
+            var neptuneTrackLine = DrawTrackLine(0xff0000, radius * 130, 0);
+            scene.add(neptuneTrackLine);
+            var meterialNeptune = new THREE.MeshPhongMaterial({ color: 0xffffff, map: THREE.ImageUtils.loadTexture("images/haiwangxing.jpg") });
+            meshNeptune = new THREE.Mesh(geometry, meterialNeptune);
+            meshNeptune.scale.set(3.85, 3.85, 3.85);
+            meshNeptune.position.set(-radius * 130, 0, -radius * 10);
+            scene.add(meshNeptune);
+   
+            var neptune_radius = 3.85 * radius;
+
             // stars
             var i, r = radius * 10, starsGeometry = [new THREE.Geometry(), new THREE.Geometry()];
             for (i = 0; i < 250; i++) {
