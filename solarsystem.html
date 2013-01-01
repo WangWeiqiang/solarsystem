@@ -157,13 +157,14 @@
         var radius = 1;
         var distence = 400;
         var sun_radius = 109 * radius;
-        var mercury_radius = 0.382 * radius, meshMercury, mercuryPivot;
-        var venus_radius = 0.94 * radius, meshVenus, venusPivot;
-        var mars_radius = 0.6 * radius, meshMars, marsPivot;
-        var jupiter_radius = 11 * radius, meshJupiter;
-        var saturm_radius = 9.4 * radius;
-        var uranus_radius = 3.98 * radius;
-        var neptune_radius = 3.85 * radius;
+        var mercury_radius = 0.382 * radius, meshMercury, mercuryPivot, meshMercury_camera;
+        var venus_radius = 0.94 * radius, meshVenus, venusPivot, meshVenus_camera;
+        var meshPlanet, meshClouds, meshMoon, meshPlanet_camera;
+        var mars_radius = 0.6 * radius, meshMars, marsPivot, meshMars_camera;
+        var jupiter_radius = 11 * radius, meshJupiter, meshJupiter_camera;
+        var saturm_radius = 9.4 * radius, meshSaturm, meshSaturm_camera;
+        var uranus_radius = 3.98 * radius, meshUranus, meshUranus_camera;
+        var neptune_radius = 3.85 * radius, meshNeptune, meshNeptune_camera;
 
         var tilt = 0.41;
         var rotationSpeed = 0.02;
@@ -176,7 +177,7 @@
         var SCREEN_WIDTH = window.innerWidth;
 
         var controls, sceneCube;
-        var geometry, meshPlanet, meshClouds, meshMoon, meshSun;
+        var geometry, meshSun;
         var dirLight, pointLight, ambientLight;
 
         var d, dPlanet, dMoon, dMoonVec = new THREE.Vector3();
@@ -247,6 +248,10 @@
             meshPlanet.rotation.y = 0;
             meshPlanet.rotation.z = tilt;
             meshPlanet.position.set(0, 0, distence);
+            meshPlanet_camera = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial());
+            meshPlanet_camera.scale.set(0.9, 0.9, 0.9);
+            meshPlanet_camera.position.set(0, 0, distence);
+            scene.add(meshPlanet_camera);
             scene.add(meshPlanet);
             objects.push(meshPlanet);
             // clouds on the earth
@@ -272,16 +277,14 @@
                 fragmentShader: document.getElementById('fragmentShader').innerHTML,
                 transparent: true
             });
-            //sunmaterial = new THREE.MeshPhongMaterial({ color: 0xffff00, map: THREE.ImageUtils.loadTexture("images/sun.jpg"), transparent: true });
-            sunmaterial.opacity = 0.5
             meshSun = new THREE.Mesh(new THREE.SphereGeometry(sun_radius, 50, 50), sunmaterial);
-            //meshSun.scale.set(100, 100, 100);
             scene.add(meshSun);
             objects.push(meshSun);
 
             meshSun.add(earthPivot);
             earthPivot.add(meshPlanet);
             earthPivot.add(meshClouds);
+            earthPivot.add(meshPlanet_camera);
             // moon
             var materialMoon = new THREE.MeshPhongMaterial({ color: 0xffffff, map: moonTexture });
             meshMoon = new THREE.Mesh(geometry, materialMoon);
@@ -299,21 +302,28 @@
             meshMercury.scale.set(0.3, 0.3, 0.3);
             meshMercury.position.set(distence * 0.38, 0, 0);
             scene.add(meshMercury);
+            meshMercury_camera = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial());
+            meshMercury_camera.scale.set(0.2, 0.2, 0.2);
+            meshMercury_camera.position.set(distence * 0.38, 0, 0);
             mercuryPivot = new THREE.Object3D();
             meshSun.add(mercuryPivot);
             mercuryPivot.add(meshMercury);
-
+            mercuryPivot.add(meshMercury_camera);
             //Venus
             var venusTrackLine = DrawTrackLine(0x00ff00, distence * 0.72, 0);
             scene.add(venusTrackLine);
             var meterialVenus = new THREE.MeshPhongMaterial({ color: 0xffffff, map: THREE.ImageUtils.loadTexture("images/jinxing.jpg") });
             meshVenus = new THREE.Mesh(geometry, meterialVenus);
             meshVenus.scale.set(0.8, 0.8, 0.8);
-            meshVenus.position.set(distence * 0.72, 0, distence * 2.5);
-            scene.add(meshVenus);
+            meshVenus.position.set(distence * 0.72, 0, 0);
+            meshVenus_camera = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial());
+            meshVenus_camera.scale.set(0.7, 0.7, 0.7);
+            meshVenus_camera.position.set(distence * 0.72, 0, 0);
             venusPivot = new THREE.Object3D();
+
             meshSun.add(venusPivot);
             venusPivot.add(meshVenus);
+            venusPivot.add(meshVenus_camera);
 
             //Mars
             var marsTrackLine = DrawTrackLine(0x00ffff, distence * 1.52, 0);
@@ -322,17 +332,29 @@
             meshMars = new THREE.Mesh(geometry, meterialMars);
             meshMars.scale.set(0.6, 0.6, 0.6);
             meshMars.position.set(-distence * 1.52, 0, 0);
-            scene.add(meshMars);
+            meshMars_camera = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial());
+            meshMars_camera.scale.set(0.5, 0.5, 0.5);
+            meshMars_camera.position.set(-distence * 1.52, 0, 0);
+            marsPivot = new THREE.Object3D();
+            meshSun.add(marsPivot);
+            marsPivot.add(meshMars);
+            marsPivot.add(meshMars_camera);
+
 
             //Jupiter
             var jupiterTrackLine = DrawTrackLine(0xff0000, distence * 5.22, 0);
             scene.add(jupiterTrackLine);
             var meterialJupiter = new THREE.MeshPhongMaterial({ color: 0xffffff, map: THREE.ImageUtils.loadTexture("images/muxing.jpg"), transparent: true });
-
             meshJupiter = new THREE.Mesh(geometry, meterialJupiter);
-
             meshJupiter.scale.set(11, 11, 11);
             meshJupiter.position.set(-distence * 5.22, 0, 0);
+            meshJupiter_camera = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial());
+            meshJupiter_camera.scale.set(10, 10, 10);
+            meshJupiter_camera.position.set(-distence * 5.22, 0, 0);
+            jupiterPivot = new THREE.Object3D();
+            meshSun.add(jupiterPivot);
+            jupiterPivot.add(meshJupiter);
+            jupiterPivot.add(meshJupiter_camera);
             scene.add(meshJupiter);
 
             //saturm
@@ -341,8 +363,15 @@
             var meterialSaturm = new THREE.MeshPhongMaterial({ color: 0xffffff, map: THREE.ImageUtils.loadTexture("images/tuxing.jpg") });
             meshSaturm = new THREE.Mesh(geometry, meterialSaturm);
             meshSaturm.scale.set(9.4, 9.4, 9.4);
-            meshSaturm.position.set(-distence * 9.57, 0, -distence * 10);
-            scene.add(meshSaturm);
+            meshSaturm.position.set(-distence * 9.57, 0, 0);
+            meshSaturm_camera = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial());
+            meshSaturm_camera.scale.set(9.3, 9.3, 9.3);
+            meshSaturm_camera.position.set(-distence * 9.57, 0, 0);
+            saturmPivot = new THREE.Object3D();
+            meshSun.add(saturmPivot);
+            saturmPivot.add(meshSaturm);
+            saturmPivot.add(meshSaturm_camera);
+
 
             //Uranus
             var uranusTrackLine = DrawTrackLine(0xff0000, distence * 19.34, 0);
@@ -350,7 +379,14 @@
             var meterialUranus = new THREE.MeshPhongMaterial({ color: 0xffffff, map: THREE.ImageUtils.loadTexture("images/tianwangxing.jpg") });
             meshUranus = new THREE.Mesh(geometry, meterialUranus);
             meshUranus.scale.set(3.98, 3.98, 3.98);
-            meshUranus.position.set(-distence * 19.34, 0, -distence * 10);
+            meshUranus.position.set(-distence * 19.34, 0, 0);
+            meshUranus_camera = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial());
+            meshUranus_camera.scale.set(3.9, 3.9, 3.9);
+            meshUranus_camera.position.set(-distence * 19.34, 0, 0);
+            uranusPivot = new THREE.Object3D();
+            meshSun.add(uranusPivot);
+            uranusPivot.add(meshUranus);
+            uranusPivot.add(meshUranus_camera);
             scene.add(meshUranus);
 
             //neptune
@@ -359,13 +395,20 @@
             var meterialNeptune = new THREE.MeshPhongMaterial({ color: 0xffffff, map: THREE.ImageUtils.loadTexture("images/haiwangxing.jpg") });
             meshNeptune = new THREE.Mesh(geometry, meterialNeptune);
             meshNeptune.scale.set(3.85, 3.85, 3.85);
-            meshNeptune.position.set(-distence * 30.35, 0, -distence * 30);
+            meshNeptune.position.set(-distence * 30.35, 0, 0);
+            meshNeptune_camera = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial());
+            meshNeptune_camera.scale.set(3.8, 3.8, 3.8);
+            meshNeptune_camera.position.set(-distence * 30.35, 0, 0);
+            neptunePivot = new THREE.Object3D();
+            meshSun.add(neptunePivot);
+            neptunePivot.add(meshNeptune);
+            neptunePivot.add(meshNeptune_camera);
             scene.add(meshNeptune);
 
 
             // stars
             var i, r = radius * 10, starsGeometry = [new THREE.Geometry(), new THREE.Geometry()];
-            for(i = 0; i < 250; i++) {
+            for (i = 0; i < 250; i++) {
                 var vertex = new THREE.Vector3();
                 vertex.x = Math.random() * 10;
                 vertex.y = Math.random() * 10;
@@ -374,7 +417,7 @@
                 starsGeometry[0].vertices.push(vertex);
             }
 
-            for(i = 0; i < distence * 10; i++) {
+            for (i = 0; i < distence * 10; i++) {
                 var vertex = new THREE.Vector3();
                 vertex.x = Math.random() * 10;
                 vertex.y = Math.random() * 10;
@@ -385,14 +428,14 @@
 
             var stars;
             var starsMaterials = [new THREE.ParticleBasicMaterial({ color: 0x555555, size: 1, sizeAttenuation: false }),
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    new THREE.ParticleBasicMaterial({ color: 0x555555, size: 1, sizeAttenuation: false }),
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    new THREE.ParticleBasicMaterial({ color: 0x333333, size: 2, sizeAttenuation: false }),
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    new THREE.ParticleBasicMaterial({ color: 0x3a3a3a, size: 1, sizeAttenuation: false }),
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    new THREE.ParticleBasicMaterial({ color: 0x1a1a1a, size: 2, sizeAttenuation: false }),
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    new THREE.ParticleBasicMaterial({ color: 0x1a1a1a, size: 1, sizeAttenuation: false })
-                                                                                                                                                                                                                                                            ];
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            new THREE.ParticleBasicMaterial({ color: 0x555555, size: 1, sizeAttenuation: false }),
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            new THREE.ParticleBasicMaterial({ color: 0x333333, size: 2, sizeAttenuation: false }),
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            new THREE.ParticleBasicMaterial({ color: 0x3a3a3a, size: 1, sizeAttenuation: false }),
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            new THREE.ParticleBasicMaterial({ color: 0x1a1a1a, size: 2, sizeAttenuation: false }),
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            new THREE.ParticleBasicMaterial({ color: 0x1a1a1a, size: 1, sizeAttenuation: false })
+                                                                                                                                                                                                                                                                    ];
 
-            for(i = 10; i < 30; i++) {
+            for (i = 10; i < 30; i++) {
                 stars = new THREE.ParticleSystem(starsGeometry[i % 2], starsMaterials[i % 6]);
                 stars.rotation.x = Math.random() * 10;
                 stars.rotation.y = Math.random() * 10;
@@ -455,7 +498,7 @@
             dMoonVec.sub(camera.position, meshMoon.position);
             dMoon = dMoonVec.length();
 
-            if(dMoon < dPlanet) {
+            if (dMoon < dPlanet) {
                 d = (dMoon - radius * moonScale * 1.01);
             } else {
                 d = (dPlanet - radius * 1.01);
@@ -483,7 +526,7 @@
 
             var intersects = ray.intersectObjects(objects);
 
-            if(intersects.length > 0) {
+            if (intersects.length > 0) {
 
                 var cammerZ = (intersects[0].object.position.z);
                 camera.position.set(0, 0, cammerZ);
@@ -503,14 +546,14 @@
 
 <body onload="play()">
     <ul id="menu" style="position: fixed">
-        <li><a href="javascript:ViewFrom(meshMercury);">Mercury</a></li>
-        <li><a href="javascript:ViewFrom(meshVenus);">Venus</a></li>
-        <li><a href="javascript:ViewFrom(meshPlanet);">Earth</a></li>
-        <li><a href="javascript:ViewFrom(meshMars);">Mars</a></li>
-        <li><a href="javascript:ViewFrom(meshJupiter);">Jupiter</a></li>
-        <li><a href="Javascript:ViewFrom(meshSaturm);">Saturm</a></li>
-        <li><a href="javascript:ViewFrom(meshUranus)">Uranus</a></li>
-        <li><a href="Javascript:ViewFrom(meshNeptune)">neptune</a></li>
+        <li><a href="javascript:ViewFrom(meshMercury_camera);">Mercury</a></li>
+        <li><a href="javascript:ViewFrom(meshVenus_camera);">Venus</a></li>
+        <li><a href="javascript:ViewFrom(meshPlanet_camera);">Earth</a></li>
+        <li><a href="javascript:ViewFrom(meshMars_camera);">Mars</a></li>
+        <li><a href="javascript:ViewFrom(meshJupiter_camera);">Jupiter</a></li>
+        <li><a href="Javascript:ViewFrom(meshSaturm_camera);">Saturm</a></li>
+        <li><a href="javascript:ViewFrom(meshUranus_camera)">Uranus</a></li>
+        <li><a href="Javascript:ViewFrom(meshNeptune_camera)">neptune</a></li>
 
     </ul>
     <div id="box"></div>
