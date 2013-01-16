@@ -12,6 +12,21 @@
         body {
             padding: 0;
             margin: 0;
+            font-family: Verdana;
+            font-size: 13px;
+        }
+        #info{
+            position: absolute;
+            right: 0;
+            top: 0;
+            width: 400px;
+            border-top: solid 2px #aaa;
+            border-bottom: solid 2px #555;
+            border-left: solid 2px #aaa;
+            border-right: solid 2px #555;
+            background-color: #808080;
+            border-bottom-right-radius: 3px;
+            border-bottom-left-radius: 3px;
         }
         #menu{
             list-style-type: none;
@@ -20,20 +35,60 @@
             left: 0;
             margin: 0;
             padding: 0;
-            border: solid 1px #d9d7d7;
+            border-top: none;
+            background-color: #000;
+            width: 130px;
+            border-bottom-right-radius: 3px;
+            border-bottom-left-radius: 3px;
         }
+        
         #menu li{
             background-color:#808080;
-            margin: 1px 0;
-            padding: 3px 10px;
+            line-height: 20px;
+        }
+        #menu #language{
+            text-align: center;
+        }
+        #menu #language img{
+            cursor: pointer;
+            opacity: 0.3;
+        }
+        #menu #language img.highlight,#menu #language img:hover{
+            opacity: 1;
+        }
+        #menu li:first-child{
+            margin: 0;
+        }
+        #menu li:last-child{
+            margin: 0;
+            border-bottom-right-radius: 3px;
+            border-bottom-left-radius: 3px;
         }
         #menu li a{
             text-decoration: none;
             color: #eee;
             display: block;
+            padding: 3px 10px;
+            cursor: pointer;
+            border-top: solid 2px #999;
+            border-bottom: solid 2px #666;
+        }
+        #menu li:last-child a{
+            border-bottom-left-radius: 3px;
+            border-bottom-right-radius: 3px;
+            font-size: 12px;
+            line-height: 12px;
+            text-align: center;
+            height: 12px;
         }
         #menu li a:hover,#menu li a.highlight{
             color: #ff6a00;
+            background-color: #fffdd8;
+            border-top: solid 2px #fff;
+            border-bottom: solid 2px #ff6a00;
+        }
+        #menu li.item{
+            display: none;
         }
     </style>
     <script id="fragmentShader" type="x-shader/x-fragment">
@@ -169,6 +224,7 @@
     </script>
 
     <script>
+        var language="en";
         var container, stats;
         var camera, scene, renderer;
         var group;
@@ -232,7 +288,7 @@
             pointLight.position.set(0, 0, 0);
             scene.add(pointLight);
 
-            
+
             //sun
             CreatePlanetSystem("sun");
 
@@ -241,7 +297,7 @@
 
             //Mercury
             CreatePlanetSystem("mercury");
-            
+
             //Venus
             CreatePlanetSystem("venus");
 
@@ -256,7 +312,7 @@
 
             //Uranus
             CreatePlanetSystem("uranus");
-            
+
             //neptune
             CreatePlanetSystem("neptune");
 
@@ -353,13 +409,22 @@
             }
         }
 
-        function ViewFrom(obj) {
+        function ViewFrom(obj, menu) {
             obj.add(camera);
             camera.position.set(0, 0, obj.boundRadius + obj.boundRadius * 2);
+            $("#menu li a").removeClass("highlight");
+            $(menu).addClass("highlight");
+            console.log($(menu));
         }
 
         function ToggleTrackLine(val) {
             earth_trackline.visible = uranusTrackLine.visible = mercuryTrackLine.visible = venusTrackLine.visible = marsTrackLine.visible = jupiterTrackLine.visible = saturmTrackLine.visible = neptuneTrackLine.visible = ($(val).attr("checked") == "checked");
+        }
+
+        function SelectLanguage(l,flag){
+            language=l;
+            $("#menu #language img").removeClass("highlight");
+            $(flag).addClass('highlight');
         }
 
     </script>
@@ -367,18 +432,30 @@
 
 <body onload="play()">
     <ul id="menu">
-        <li><a href="javascript:ViewFrom(meshSun,this);">Sun</a></li>
-        <li><a href="javascript:ViewFrom(meshMercury_camera,this);">Mercury</a></li>
-        <li><a href="javascript:ViewFrom(meshVenus_camera,this);">Venus</a></li>
-        <li><a href="javascript:ViewFrom(meshPlanet_camera,this);">Earth</a></li>
-        <li><a href="javascript:ViewFrom(meshMoon,this);">Moon</a></li>
-        <li><a href="javascript:ViewFrom(meshMars_camera,this);">Mars</a></li>
-        <li><a href="javascript:ViewFrom(meshJupiter_camera,this);">Jupiter</a></li>
-        <li><a href="Javascript:ViewFrom(meshSaturm_camera,this);">Saturm</a></li>
-        <li><a href="javascript:ViewFrom(meshUranus_camera,this)">Uranus</a></li>
-        <li><a href="Javascript:ViewFrom(meshNeptune_camera,this)">neptune</a></li>
-        <li>Show Track Line:<input type="checkbox" checked="checked" onclick="ToggleTrackLine(this)"/></li>
+        <li id="language"><img src="images/cn.png" onclick="SelectLanguage('cn',this)"/> | <img src="images/gb.png" onclick="SelectLanguage('en',this)"/></li>
+        <li class="item"><a onclick="ViewFrom(meshSun,this);">Sun</a></li>
+        <li class="item"><a onclick="ViewFrom(meshMercury_camera,this);">Mercury</a></li>
+        <li class="item"><a onclick="ViewFrom(meshVenus_camera,this);">Venus</a></li>
+        <li class="item"><a onclick="ViewFrom(meshPlanet_camera,this);">Earth</a></li>
+        <li class="item"><a onclick="ViewFrom(meshMoon,this);">Moon</a></li>
+        <li class="item"><a onclick="ViewFrom(meshMars_camera,this);">Mars</a></li>
+        <li class="item"><a onclick="ViewFrom(meshJupiter_camera,this);">Jupiter</a></li>
+        <li class="item"><a onclick="ViewFrom(meshSaturm_camera,this);">Saturn</a></li>
+        <li class="item"><a onclick="ViewFrom(meshUranus_camera,this)">Uranus</a></li>
+        <li class="item"><a onclick="ViewFrom(meshNeptune_camera,this)">Neptune</a></li>
+        <li class="item"><input id="tracklinecontrol" type="checkbox" checked="checked" onclick="ToggleTrackLine(this)"/><label for="tracklinecontrol">Show Track</lable></li>
+        <li><a class="closed" onclick="$('#menu li.item').slideToggle('slow');$('.showtext').toggle();$('.closetext').toggle();"><span class="showtext">▼</span><span class="closetext" style="display: none">▲</span></a></li>
     </ul>
     <div id="box"></div>
+    <div id="info">
+        <div id="titlebar">
+            <div id="title">
+            </div>
+            <div id="titleclose">X</div>
+        </div>
+        <div id="infobody">
+            
+        </div>
+    </div>
 </body>
 </html>
